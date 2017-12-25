@@ -13,6 +13,8 @@ git clone https://github.com/ImTema/folderMonitor.git
 ```
 java -jar path/to/jar/folderMonitor-with-dependencies.jar path/to/config.properties
 ```
+in case with maven compilation path is:`IdeaProjects/folderMonitor/target/folderMonitor-1.0-SNAPSHOT-jar-with-dependencies.jar`
+
 **path/to/config.properties** is *optional*. By default folders are `path/to/jar/`
 
 to terminate program put `__stopnow__.csv` file in scan directory (it can be with empty content)
