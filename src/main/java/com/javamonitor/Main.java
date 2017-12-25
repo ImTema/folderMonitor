@@ -66,7 +66,8 @@ public class Main {
             Props.OUTPUT_FOLDER=System.getProperty("user.dir");;
         } finally {
             try {
-                input.close();
+                if(input!=null)
+                    input.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
