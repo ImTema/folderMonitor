@@ -41,39 +41,32 @@ public class ProcessThread implements Runnable{
                 long timestamp = Long.valueOf(line[0])*1000;
                 String newUser= line[1];
                 String url=line[2];
-                String time=line[3];
-                LocalDateTime newDateTime = convertToDateTime(timestamp).plusSeconds(Integer.valueOf(time));
+                long time=Long.valueOf(line[3]);
+                long isMoreThanOne=0;
+                LocalDateTime newDateTime = convertToDateTime(timestamp).plusSeconds(time);
                 LocalDateTime oldDateTime = convertToDateTime(timestamp);
-                long diff;
                 //check if overdate
-                if(newDateTime.toLocalDate().isAfter(oldDateTime.toLocalDate())){
-                    diff = convertToTimestamp(newDateTime.toLocalDate().atStartOfDay())/1000
-                            -convertToTimestamp(oldDateTime)/1000;
-                    //date After 00:00
+                while(newDateTime.toLocalDate().isAfter(oldDateTime.toLocalDate())){
+                    long diff = convertToTimestamp(newDateTime)/1000
+                            -convertToTimestamp(newDateTime.toLocalDate().atStartOfDay())/1000;
                     users=data.getOrDefault(newDateTime.toLocalDate(), new HashMap<>());
-                    users.merge(newUser, new UserData(newUser, url, diff, Long.valueOf(line[0])*1000), (userData, newUserData) -> {
+                    users.merge(newUser, new UserData(newUser, url, diff+isMoreThanOne, Long.valueOf(line[0])*1000), (userData, newUserData) -> {
                         userData.sites.merge(url, newUserData.sites.get(url),
                                 (val, newVal) -> val + newVal);
                         return userData;
                     });
                     data.put(newDateTime.toLocalDate(), users);
-                    //date before 00:00
-                    users=data.getOrDefault(oldDateTime.toLocalDate(), new HashMap<>());
-                    users.merge(newUser, new UserData(newUser, url, Long.valueOf(time)-diff, Long.valueOf(line[0])*1000), (userData, newUserData) -> {
-                        userData.sites.merge(url, newUserData.sites.get(url),
-                                (val, newVal) -> val + newVal);
-                        return userData;
-                    });
-                    data.put(oldDateTime.toLocalDate(), users);
-                }else{
-                    users=data.getOrDefault(oldDateTime.toLocalDate(), new HashMap<>());
-                    users.merge(newUser, new UserData(newUser, url, time, Long.valueOf(line[0])*1000), (userData, newUserData) -> {
-                        userData.sites.merge(url, newUserData.sites.get(url),
-                                (val, newVal) -> val + newVal);
-                        return userData;
-                    });
-                    data.put(oldDateTime.toLocalDate(), users);
+                    time=time-diff-1;
+                    newDateTime = convertToDateTime(timestamp).plusSeconds(time);
+                    isMoreThanOne=1;
                 }
+                users=data.getOrDefault(oldDateTime.toLocalDate(), new HashMap<>());
+                users.merge(newUser, new UserData(newUser, url, time+isMoreThanOne, Long.valueOf(line[0])*1000), (userData, newUserData) -> {
+                    userData.sites.merge(url, newUserData.sites.get(url),
+                            (val, newVal) -> val + newVal);
+                    return userData;
+                });
+                data.put(oldDateTime.toLocalDate(), users);
             }
         } catch (IOException e) {
             System.out.println("Error reading csv-file: " + e.getCause());
@@ -108,11 +101,12 @@ public class ProcessThread implements Runnable{
             Date res = Date.from(instant);
             lines.add(new SimpleDateFormat("dd-MMM-yyyy", Locale.ENGLISH).format(res).toUpperCase());
             Map<String, UserData> users = data.get(entry);
-            List<String> sorted = users.keySet().stream().sorted(Comparator.comparingInt(s -> Integer.valueOf(s.subSequence(4, s.length()).toString()))).collect(Collectors.toList());
-            for(String user : sorted){
-                for(Map.Entry<String, Long> site : users.get(user).sites.entrySet()){
+            List<String> sortedUsers = users.keySet().stream().sorted(Comparator.comparingInt(s -> Integer.valueOf(s.subSequence(4, s.length()).toString()))).collect(Collectors.toList());
+            for(String user : sortedUsers){
+                List<String> sortedUrls = users.get(user).sites.keySet().stream().sorted().collect(Collectors.toList());
+                for(String url : sortedUrls){
                     String line = user;
-                    line+=","+site.getKey()+","+site.getValue();
+                    line+=","+url+","+users.get(user).sites.get(url);
                     lines.add(line);
                 }
             }
